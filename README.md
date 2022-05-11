@@ -57,4 +57,3 @@ distributed training
     --num_train_epochs 3 \
     --learning_rate 1e-5  2>&1| tee train_trinity.log
 ```
-# PTM4Tag
