@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoTokenizer, AutoModel, PreTrainedModel
+from transformers import AutoTokenizer, AutoModel, PreTrainedModel, T5EncoderModel	
+from transformers.models.bart.modeling_bart import BartEncoder
 from model.loss import loss_fn
 
 
@@ -151,9 +152,27 @@ class ClassifyHeaderNoCode(nn.Module):
 class TBertT(PreTrainedModel):
     def __init__(self, config, code_bert, num_class):
         super().__init__(config)
-        self.tbert = AutoModel.from_pretrained(code_bert)
-        self.nbert = AutoModel.from_pretrained(code_bert)
-        self.cbert = AutoModel.from_pretrained(code_bert)
+        if "bart" in code_bert:	
+            self.tbert = BartEncoder.from_pretrained(code_bert)	
+            self.nbert = BartEncoder.from_pretrained(code_bert)	
+            self.cbert = BartEncoder.from_pretrained(code_bert)	
+            print("BART EncoderModel")	
+        	
+        if "t5" in code_bert:	
+            self.tbert = T5EncoderModel.from_pretrained(code_bert)	
+            self.nbert = T5EncoderModel.from_pretrained(code_bert)	
+            self.cbert = T5EncoderModel.from_pretrained(code_bert)	
+            print("T5EncoderModel")	
+        	
+        elif "cotext" in code_bert:	
+            self.tbert = T5EncoderModel.from_pretrained(code_bert)	
+            self.nbert = T5EncoderModel.from_pretrained(code_bert)	
+            self.cbert = T5EncoderModel.from_pretrained(code_bert)	
+            print("Cotext Model")	
+        else:
+            self.tbert = AutoModel.from_pretrained(code_bert)
+            self.nbert = AutoModel.from_pretrained(code_bert)
+            self.cbert = AutoModel.from_pretrained(code_bert)
 
         self.cls = ClassifyHeader(config, num_class=num_class)
 
@@ -179,8 +198,12 @@ class TBertT(PreTrainedModel):
 class TBertTNoTitle(PreTrainedModel):
     def __init__(self, config, code_bert, num_class):
         super().__init__(config)
-        self.nbert = AutoModel.from_pretrained(code_bert)
-        self.cbert = AutoModel.from_pretrained(code_bert)
+        if "t5" in code_bert:	
+            self.nbert = T5EncoderModel.from_pretrained(code_bert)	
+            self.cbert = T5EncoderModel.from_pretrained(code_bert)	
+        else: 
+            self.nbert = AutoModel.from_pretrained(code_bert)
+            self.cbert = AutoModel.from_pretrained(code_bert)
 
         self.cls = ClassifyHeaderNoTitle(config, num_class=num_class)
 
@@ -201,8 +224,12 @@ class TBertTNoTitle(PreTrainedModel):
 class TBertTNoText(PreTrainedModel):
     def __init__(self, config, code_bert, num_class):
         super().__init__(config)
-        self.tbert = AutoModel.from_pretrained(code_bert)
-        self.cbert = AutoModel.from_pretrained(code_bert)
+        if "t5" in code_bert:	
+            self.nbert = T5EncoderModel.from_pretrained(code_bert)	
+            self.cbert = T5EncoderModel.from_pretrained(code_bert)	
+        else: 
+            self.tbert = AutoModel.from_pretrained(code_bert)
+            self.cbert = AutoModel.from_pretrained(code_bert)
 
         self.cls = ClassifyHeaderNoText(config, num_class=num_class)
 
@@ -223,8 +250,12 @@ class TBertTNoText(PreTrainedModel):
 class TBertTNoCode(PreTrainedModel):
     def __init__(self, config, code_bert, num_class):
         super().__init__(config)
-        self.tbert = AutoModel.from_pretrained(code_bert)
-        self.nbert = AutoModel.from_pretrained(code_bert)
+        if "t5" in code_bert:	
+            self.nbert = T5EncoderModel.from_pretrained(code_bert)	
+            self.cbert = T5EncoderModel.from_pretrained(code_bert)	
+        else: 
+            self.tbert = AutoModel.from_pretrained(code_bert)
+            self.nbert = AutoModel.from_pretrained(code_bert)
 
         self.cls = ClassifyHeaderNoCode(config, num_class=num_class)
 
@@ -240,31 +271,4 @@ class TBertTNoCode(PreTrainedModel):
         n_hidden = self.nbert(text_ids, attention_mask=text_attention_mask)[0]
 
         logits = self.cls(title_hidden=t_hidden, text_hidden=n_hidden)
-        return logits
-
-
-class TBertSI(PreTrainedModel):
-    def __init__(self,config, code_bert, num_class):
-        super().__init__(config)
-        self.tbert = AutoModel.from_pretrained(code_bert)
-        self.nbert = self.tbert
-        self.cbert = self.tbert
-        self.cls = ClassifyHeader(config, num_class=num_class)
-    
-    def forward(
-            self,
-            title_ids=None,
-            title_attention_mask=None,
-            text_ids=None,
-            text_attention_mask=None,
-            code_ids=None,
-            code_attention_mask=None,
-    ):
-        t_hidden = self.tbert(
-            title_ids, attention_mask=title_attention_mask)[0]
-        n_hidden = self.tbert(text_ids, attention_mask=text_attention_mask)[0]
-        c_hidden = self.tbert(code_ids, attention_mask=code_attention_mask)[0]
-
-        logits = self.cls(title_hidden=t_hidden,
-                          text_hidden=n_hidden, code_hidden=c_hidden)
         return logits
